@@ -37,7 +37,7 @@ func (a *Allocation) AddPermission(p *Permission) {
 	a.permissionsLock.Lock()
 	defer a.permissionsLock.Unlock()
 	for _, existingPermission := range a.permissions {
-		if p.Addr.Equal(existingPermission.Addr) {
+		if p.IP.Equal(existingPermission.IP) {
 			existingPermission.refresh()
 			return
 		}
@@ -49,12 +49,12 @@ func (a *Allocation) AddPermission(p *Permission) {
 }
 
 // RemovePermission removes the TransportAddr from the allocation's permissions
-func (a *Allocation) RemovePermission(addr *stun.TransportAddr) bool {
+func (a *Allocation) RemovePermission(ip net.IP) bool {
 	a.permissionsLock.Lock()
 	defer a.permissionsLock.Unlock()
 
 	for i := len(a.permissions) - 1; i >= 0; i-- {
-		if a.permissions[i].Addr.Equal(addr) {
+		if a.permissions[i].IP.Equal(ip) {
 			a.permissions = append(a.permissions[:i], a.permissions[i+1:]...)
 			return true
 		}
@@ -64,11 +64,11 @@ func (a *Allocation) RemovePermission(addr *stun.TransportAddr) bool {
 }
 
 // GetPermission gets the Permission from the allocation
-func (a *Allocation) GetPermission(addr *stun.TransportAddr) *Permission {
+func (a *Allocation) GetPermission(ip net.IP) *Permission {
 	a.permissionsLock.RLock()
 	defer a.permissionsLock.RUnlock()
 	for _, p := range a.permissions {
-		if p.Addr.Equal(addr) {
+		if p.IP.Equal(ip) {
 			return p
 		}
 	}
@@ -96,12 +96,12 @@ func (a *Allocation) AddChannelBind(c *ChannelBind) error {
 		c.start()
 
 		// Channel binds also refresh permissions.
-		a.AddPermission(&Permission{Addr: c.Peer})
+		a.AddPermission(&Permission{IP: c.Peer.IP})
 	} else {
 		channelByID.refresh()
 
 		// Channel binds also refresh permissions.
-		a.AddPermission(&Permission{Addr: channelByID.Peer})
+		a.AddPermission(&Permission{IP: channelByID.Peer.IP})
 	}
 
 	return nil
@@ -200,7 +200,7 @@ func (a *Allocation) packetHandler(m *Manager) {
 			if _, err = a.TurnSocket.WriteTo(channelData, a.fiveTuple.SrcAddr.Addr()); err != nil {
 				fmt.Printf("Failed to send ChannelData from allocation %v %v \n", srcAddr, err)
 			}
-		} else if p := a.GetPermission(&stun.TransportAddr{IP: srcAddr.(*net.UDPAddr).IP, Port: srcAddr.(*net.UDPAddr).Port}); p != nil {
+		} else if p := a.GetPermission(srcAddr.(*net.UDPAddr).IP); p != nil {
 			dataAttr := stun.Data{Data: buffer[:n]}
 			xorPeerAddressAttr := stun.XorPeerAddress{XorAddress: stun.XorAddress{IP: srcAddr.(*net.UDPAddr).IP, Port: srcAddr.(*net.UDPAddr).Port}}
 			if err = stun.BuildAndSend(a.TurnSocket, a.fiveTuple.SrcAddr, stun.ClassIndication, stun.MethodData, stun.GenerateTransactionID(), &xorPeerAddressAttr, &dataAttr); err != nil {

@@ -341,10 +341,8 @@ func (s *Server) handleCreatePermissionRequest(srcAddr *stun.TransportAddr, dstA
 			peerAddress := stun.XorPeerAddress{}
 			if err := peerAddress.Unpack(m, addr); err == nil {
 				a.AddPermission(&allocation.Permission{
-					Addr: &stun.TransportAddr{
-						IP:   peerAddress.XorAddress.IP,
-						Port: peerAddress.XorAddress.Port,
-					}})
+					IP: peerAddress.XorAddress.IP,
+				})
 				addCount++
 			}
 		}
@@ -387,11 +385,11 @@ func (s *Server) handleSendIndication(srcAddr *stun.TransportAddr, dstAddr *stun
 	}
 
 	msgDst := &stun.TransportAddr{IP: xorPeerAddress.XorAddress.IP, Port: xorPeerAddress.XorAddress.Port}
-	if perm := a.GetPermission(msgDst); perm == nil {
+	if perm := a.GetPermission(msgDst.IP); perm == nil {
 		return errors.Errorf("Unable to handle send-indication, no permission added: %v", msgDst)
 	}
 
-	l, err := a.RelaySocket.WriteTo(dataAttr.Data, msgDst.Addr())
+	l, err := a.TurnSocket.WriteTo(dataAttr.Data, msgDst.Addr())
 	if l != len(dataAttr.Data) {
 		return errors.Errorf("packet write smaller than packet %d != %d (expected) err: %v", l, len(dataAttr.Data), err)
 	}

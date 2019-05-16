@@ -2,9 +2,8 @@ package allocation
 
 import (
 	"fmt"
+	"net"
 	"time"
-
-	"github.com/pion/stun"
 )
 
 const permissionTimeout = time.Duration(5) * time.Minute
@@ -13,21 +12,21 @@ const permissionTimeout = time.Duration(5) * time.Minute
 // filtering mechanism of NATs that comply with [RFC4787].
 // https://tools.ietf.org/html/rfc5766#section-2.3
 type Permission struct {
-	Addr          *stun.TransportAddr
+	IP            net.IP
 	allocation    *Allocation
 	lifetimeTimer *time.Timer
 }
 
 func (p *Permission) start() {
 	p.lifetimeTimer = time.AfterFunc(permissionTimeout, func() {
-		if !p.allocation.RemovePermission(p.Addr) {
-			fmt.Printf("Failed to remove permission for %v %v \n", p.Addr, p.allocation.fiveTuple)
+		if !p.allocation.RemovePermission(p.IP) {
+			fmt.Printf("Failed to remove permission for %v %v \n", p.IP, p.allocation.fiveTuple)
 		}
 	})
 }
 
 func (p *Permission) refresh() {
 	if !p.lifetimeTimer.Reset(permissionTimeout) {
-		fmt.Printf("Failed to reset permission timer for %v %v \n", p.Addr, p.allocation.fiveTuple)
+		fmt.Printf("Failed to reset permission timer for %v %v \n", p.IP, p.allocation.fiveTuple)
 	}
 }

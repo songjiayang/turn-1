@@ -68,6 +68,7 @@ func (s *Server) Listen(address string, port int) error {
 		if err != nil {
 			return errors.Wrap(err, "failed reading udp addr")
 		}
+
 		if err := s.handleUDPPacket(srcAddr, &stun.TransportAddr{IP: cm.Dst, Port: port}, size); err != nil {
 			log.Println(err)
 		}
